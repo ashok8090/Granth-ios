@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   ipa:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,6 +18,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Select Xcode
+        run: |
+          ls /Applications | grep Xcode
+          XCODE=$(ls -d /Applications/Xcode_26*.app | sort | tail -1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          swift --version
       - name: Install pods
         working-directory: ios
         run: pod install
