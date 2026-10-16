@@ -1,0 +1,58 @@
+name: iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  ipa:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install pods
+        working-directory: ios
+        run: pod install
+      - name: Build unsigned device app
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -workspace app.xcworkspace \
+            -scheme app \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO
+      - name: Pack IPA
+        run: |
+          APP=$(find "$RUNNER_TEMP/dd" -name '*.app' -type d | head -1)
+          test -n "$APP"
+          rm -rf Payload
+          mkdir Payload
+          cp -R "$APP" Payload/
+          zip -qry Granth-Prabandhan-ios.ipa Payload
+          ls -lh Granth-Prabandhan-ios.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: granth-ios-ipa
+          path: Granth-Prabandhan-ios.ipa
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0
+          name: ग्रंथ प्रबंधन iOS 1.0.0
+          files: Granth-Prabandhan-ios.ipa
+          body: |
+            Unsigned device IPA of ग्रंथ प्रबंधन.
+            A real iPhone will install it only after it is signed with an Apple Developer certificate.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
